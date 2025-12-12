@@ -1,0 +1,40 @@
+# Exclude the generated PDF output
+
+*.pdf
+
+# Exclude sensitive data and participant details
+
+data/
+
+# Exclude large binary font files
+
+fonts/
+
+# Exclude participant photos
+
+img/
+
+# --- Python Standard ---
+
+# Virtual Environments
+
+venv/
+env/
+.venv/
+
+# Compiled Python files
+
+pycache/
+*.py[cod]
+*$py.class
+
+# --- OS & Editor ---
+
+# Windows/Mac system files
+
+.DS_Store
+Thumbs.db
+
+# VS Code settings (optional, good to ignore if personal settings)
+
+.vscode/
