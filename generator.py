@@ -138,7 +138,18 @@ class PDFGenerator:
             self.cursor_y -= (attrs['size'] + attrs['bottom_padding'])
         self.cursor_y -= 20
 
-    def draw_participant_card(self, x, y, data, max_height):
+    def draw_participant_card(self, x, y, data, max_height, alignment_height=None):
+        """
+        Draws a single participant card.
+        
+        Args:
+            x (float): X coordinate (left).
+            y (float): Y coordinate (top).
+            data (dict): Participant data.
+            max_height (float): Max height of this row (for clearing space).
+            alignment_height (float, optional): If set, this is the height from 'y' 
+                where the table MUST start. This forces alignment across the row.
+        """
         # 1. Draw Image
         img_filename = data.get('potrait') 
         img_h = self.cfg.COL_WIDTH / self.cfg.IMG_ASPECT_RATIO
@@ -222,10 +233,23 @@ class PDFGenerator:
                     ('TOPPADDING', (0, 0), (-1, -1), self.cfg.TABLE_OPTS['padding']),
                 ]))
                 
-                text_y -= self.cfg.TABLE_TOP_MARGIN 
+                # ALIGNMENT LOGIC:
+                if alignment_height is not None:
+                    # If alignment is requested, we FORCE the table to start at a specific Y relative to the top (y).
+                    # alignment_height is the height of the non-table content (image + text) used for the row.
+                    # table_y = y - alignment_height - top_margin - table_height
+                    
+                    # Note: text_y currently sits at the bottom of the text.
+                    # We ignore current text_y and jump to the aligned position.
+                    
+                    table_start_y = y - alignment_height - self.cfg.TABLE_TOP_MARGIN
+                    
+                else:
+                    # Default behavior: Start immediately after the text
+                    table_start_y = text_y - self.cfg.TABLE_TOP_MARGIN 
                 
                 w, h = t.wrap(self.cfg.COL_WIDTH, self.cfg.PAGE_HEIGHT)
-                table_y_position = text_y - h
+                table_y_position = table_start_y - h
                 t.drawOn(self.c, x, table_y_position)
 
     def generate(self):
@@ -233,10 +257,49 @@ class PDFGenerator:
         rows = [self.participants[i:i + self.cfg.COLUMNS] for i in range(0, len(self.participants), self.cfg.COLUMNS)]
         
         for row in rows:
-            # PASS self.cfg TO UTILS
-            row_heights = [utils.calculate_card_height(p, self.cfg) for p in row]
-            max_row_height = max(row_heights) if row_heights else 0
+            # Calculate metrics for all items in the row
+            row_metrics = [utils.get_card_metrics(p, self.cfg) for p in row]
             
+            max_row_height = 0
+            alignment_height = None
+            
+            # Check if alignment is enabled in config
+            if hasattr(self.cfg, 'ALIGN_TABLES_ROW') and self.cfg.ALIGN_TABLES_ROW:
+                # 1. Find the maximum non-table height (image + text) in this row
+                #    This defines the common starting line for all tables.
+                max_non_table_height = 0
+                for m in row_metrics:
+                    if m['non_table_height'] > max_non_table_height:
+                        max_non_table_height = m['non_table_height']
+                
+                alignment_height = max_non_table_height
+                
+                # 2. Calculate the effective total height for each card based on this aligned start
+                final_card_heights = []
+                for m in row_metrics:
+                    # Even if a card has short text, its effective height is determined by the 
+                    # aligned table start position + its own table height.
+                    card_h = alignment_height
+                    if m['table_height'] > 0:
+                        card_h += m['table_top_margin'] + m['table_height']
+                    card_h += m['img_border_width']
+                    final_card_heights.append(card_h)
+                
+                max_row_height = max(final_card_heights) if final_card_heights else 0
+                
+            else:
+                # Standard behavior: simple max of individual totals
+                total_heights = []
+                for m in row_metrics:
+                    total = m['non_table_height']
+                    if m['table_height'] > 0:
+                        total += m['table_top_margin'] + m['table_height']
+                    total += m['img_border_width']
+                    total_heights.append(total)
+                    
+                max_row_height = max(total_heights) if total_heights else 0
+
+            # Check for page break
             if (self.cursor_y - max_row_height) < self.cfg.MARGIN_BOTTOM:
                 self.draw_meta_info()
                 self.c.showPage()
@@ -245,7 +308,13 @@ class PDFGenerator:
             
             current_x = self.cfg.MARGIN_LEFT
             for i, participant in enumerate(row):
-                self.draw_participant_card(current_x, self.cursor_y, participant, max_row_height)
+                self.draw_participant_card(
+                    current_x, 
+                    self.cursor_y, 
+                    participant, 
+                    max_row_height,
+                    alignment_height=alignment_height # Pass the alignment value
+                )
                 current_x += self.cfg.COL_WIDTH + self.cfg.GRID_GAP_X
             
             self.cursor_y -= (max_row_height + self.cfg.GRID_GAP_Y)

@@ -70,13 +70,15 @@ def main():
         "GRID_GAP_X": 22,
         "GRID_GAP_Y": 20,
 
+        "ALIGN_TABLES_ROW": True,
+
         # --- CUSTOMIZING PARTICIPANT STYLE ---
         "PARTICIPANT_STYLE": [
             {
                 "key": "name",           # The JSON key in participants.json
                 "label": "",             # Prefix text (e.g. "Name: ")
                 "font": config.FONT_NAME_BOLD, # Use imported constant or string like "Helvetica-Bold"
-                "size": 14,              # Larger size
+                "size": 13,              # Larger size
                 "color": black,
                 "padding": 0
             },
@@ -90,7 +92,7 @@ def main():
             },
             {
                 "key": "line2",          # Adding a 3rd line that might not be in the default config
-                "label": "Mental health: ",
+                "label": "",
                 "font": config.FONT_NAME_REGULAR,
                 "size": 13,
                 "color": red,           # Using a custom color (requires import)

@@ -70,13 +70,15 @@ def main():
         "GRID_GAP_X": 22,
         "GRID_GAP_Y": 20,
 
+        "ALIGN_TABLES_ROW": True,
+
         # --- CUSTOMIZING PARTICIPANT STYLE ---
         "PARTICIPANT_STYLE": [
             {
                 "key": "name",           # The JSON key in participants.json
                 "label": "",             # Prefix text (e.g. "Name: ")
-                "font": config.FONT_NAME_REGULAR, # config.FONT_NAME_BOLD, # Use imported constant or string like "Helvetica-Bold"
-                "size": 12,              # Larger size
+                "font": config.FONT_NAME_BOLD, # Use imported constant or string like "Helvetica-Bold"
+                "size": 13,              # Larger size
                 "color": black,
                 "padding": 0
             },

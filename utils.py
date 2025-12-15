@@ -72,9 +72,10 @@ def get_table_height(table_data_list, cfg):
     _, h = t.wrap(cfg.COL_WIDTH, cfg.PAGE_HEIGHT)
     return h
 
-def calculate_card_height(participant_data, cfg):
+def get_card_metrics(participant_data, cfg):
     """
-    Calculates the total height of a participant card based on image, text, and table.
+    Calculates detailed height metrics for a participant card.
+    Returns a dictionary separating content height and table height.
     """
     # 1. Image Height
     img_height = cfg.COL_WIDTH / cfg.IMG_ASPECT_RATIO
@@ -83,7 +84,9 @@ def calculate_card_height(participant_data, cfg):
     first_line_size = cfg.PARTICIPANT_STYLE[0]['size']
     text_gap = first_line_size + cfg.TEXT_GAP_BUFFER
     
-    current_height = img_height + text_gap 
+    # This 'non_table_height' represents everything from the top of the card
+    # down to the bottom of the last text line (including padding).
+    current_non_table_height = img_height + text_gap 
     
     # 2. Text Height (Dynamic)
     for field in cfg.PARTICIPANT_STYLE:
@@ -98,13 +101,36 @@ def calculate_card_height(participant_data, cfg):
         )
         
         line_height = field['size'] * 1.2
-        current_height += (len(wrapped_lines) * line_height) + field['padding']
+        current_non_table_height += (len(wrapped_lines) * line_height) + field['padding']
     
     # 3. Table Height
+    table_height = 0
     raw_table_data = participant_data.get('table_data', {})
+    table_exists = False
+    
     if raw_table_data:
         formatted_list = prepare_table_data(raw_table_data, cfg)
-        table_h = get_table_height(formatted_list, cfg)
-        current_height += table_h + cfg.TABLE_TOP_MARGIN 
+        if formatted_list:
+            table_height = get_table_height(formatted_list, cfg)
+            table_exists = True
         
-    return current_height + cfg.IMG_BORDER_WIDTH
+    return {
+        'non_table_height': current_non_table_height,
+        'table_height': table_height,
+        'table_top_margin': cfg.TABLE_TOP_MARGIN if table_exists else 0,
+        'img_border_width': cfg.IMG_BORDER_WIDTH
+    }
+
+def calculate_card_height(participant_data, cfg):
+    """
+    Calculates the total height of a participant card based on image, text, and table.
+    Uses get_card_metrics internally.
+    """
+    metrics = get_card_metrics(participant_data, cfg)
+    
+    total = metrics['non_table_height']
+    if metrics['table_height'] > 0:
+        total += metrics['table_top_margin'] + metrics['table_height']
+    
+    total += metrics['img_border_width']
+    return total

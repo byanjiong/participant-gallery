@@ -36,6 +36,9 @@ TEXT_GAP_BUFFER = 4
 
 # Gap between the last line of text and the Table
 TABLE_TOP_MARGIN = 2
+# If True, the generator will calculate the lowest text point in the current row
+# and start ALL tables in that row at that same height.
+ALIGN_TABLES_ROW = False
 
 # --- IMAGE OPTIMIZATION ---
 ENABLE_IMAGE_RESAMPLING = True   # Set to True to shrink large photos
@@ -88,3 +91,4 @@ PARTICIPANT_STYLE = [
         "padding": 0
     }
 ]
+

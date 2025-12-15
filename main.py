@@ -70,6 +70,8 @@ def main():
         "GRID_GAP_X": 22,
         "GRID_GAP_Y": 20,
 
+        "ALIGN_TABLES_ROW": True,
+        
         # --- CUSTOMIZING PARTICIPANT STYLE ---
         "PARTICIPANT_STYLE": [
             {
