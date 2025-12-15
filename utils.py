@@ -1,3 +1,4 @@
+import json
 from reportlab.lib.utils import simpleSplit
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib import colors
@@ -14,6 +15,17 @@ def prepare_table_data(raw_dict):
     Also handles text wrapping inside cells manually.
     """
     if not raw_dict:
+        return None
+
+    # --- FIX: Handle JSON string input ---
+    if isinstance(raw_dict, str):
+        try:
+            raw_dict = json.loads(raw_dict)
+        except json.JSONDecodeError:
+            print(f"Warning: Could not parse table data string: {raw_dict}")
+            return None
+
+    if not isinstance(raw_dict, dict):
         return None
 
     col_width_key = config.COL_WIDTH * config.TABLE_OPTS['key_col_ratio']
@@ -59,7 +71,12 @@ def get_table_height(table_data_list):
 def calculate_card_height(participant_data):
     # 1. Image Height
     img_height = config.COL_WIDTH / config.IMG_ASPECT_RATIO
-    current_height = img_height + 10 
+    
+    # Calculate dynamic offset matching generator.py (font size + buffer)
+    first_line_size = config.PARTICIPANT_STYLE[0]['size']
+    text_gap = first_line_size + config.TEXT_GAP_BUFFER
+    
+    current_height = img_height + text_gap 
     
     # 2. Text Height (Dynamic)
     for field in config.PARTICIPANT_STYLE:
@@ -81,6 +98,7 @@ def calculate_card_height(participant_data):
     if raw_table_data:
         formatted_list = prepare_table_data(raw_table_data)
         table_h = get_table_height(formatted_list)
-        current_height += table_h + 5 # Add little padding above table
+        # Use config variable for table top margin
+        current_height += table_h + config.TABLE_TOP_MARGIN 
         
     return current_height + config.IMG_BORDER_WIDTH

@@ -7,6 +7,15 @@ from reportlab.platypus import Table, TableStyle
 import config
 import utils
 
+# Try importing Pillow for image optimization
+try:
+    from PIL import Image
+    from reportlab.lib.utils import ImageReader
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+    print("Warning: 'Pillow' library not found. Image optimization disabled. Install via: pip install Pillow")
+
 class PDFGenerator:
     def __init__(self, filename, header_items, participants):
         self.c = canvas.Canvas(filename, pagesize=config.A4)
@@ -32,34 +41,21 @@ class PDFGenerator:
                 print(f"WARNING: Could not load font '{name}' from '{path}'. Defaulting to Helvetica.")
                 
                 # --- FALLBACK MECHANISM ---
-                # This is a bit more complex now that we have multiple fonts.
-                # If ANY font fails, we point that specific name to Helvetica.
-                
-                # We register 'Helvetica' under the custom name so logic doesn't break
                 try:
-                    # Map the intended Chinese name to the built-in Helvetica
-                    # (This is a trick to make 'NotoBold' just point to Helvetica)
-                    from reportlab.pdfbase.cidfonts import UnicodeCIDFont
-                    # Actually, simplest fallback is to just map the name to a standard font if possible
-                    # But reportlab makes aliasing hard. 
-                    # Instead, we just assume if it fails, we update the config strings in memory.
-                    
                     if name == config.FONT_NAME_REGULAR:
                         config.FONT_NAME_REGULAR = "Helvetica"
                     elif name == config.FONT_NAME_BOLD:
-                        config.FONT_NAME_BOLD = "Helvetica-Bold" # Use built-in bold
+                        config.FONT_NAME_BOLD = "Helvetica-Bold" 
                         
                 except Exception as inner_e:
                     print(f"Critical font error: {inner_e}")
 
     def apply_header_defaults(self, item):
-        # ... (Rest of the code is exactly the same as before)
         defaults = config.DEFAULT_HEADER_STYLE.copy()
         defaults.update(item)
         return defaults
 
     def draw_header(self):
-        # ... (Copy from previous version)
         for item in self.header_items:
             attrs = self.apply_header_defaults(item)
             self.c.setFont(attrs['font'], attrs['size'])
@@ -75,7 +71,6 @@ class PDFGenerator:
         self.cursor_y -= 20
 
     def draw_participant_card(self, x, y, data, max_height):
-        # ... (Copy from previous version - logic hasn't changed)
         # 1. Draw Image
         img_filename = data.get('potrait') 
         img_h = config.COL_WIDTH / config.IMG_ASPECT_RATIO
@@ -86,7 +81,37 @@ class PDFGenerator:
             if os.path.exists(img_path) and os.path.isfile(img_path):
                 try:
                     img_y_bottom = y - img_h
-                    self.c.drawImage(img_path, x, img_y_bottom, width=config.COL_WIDTH, height=img_h)
+                    
+                    # --- IMAGE OPTIMIZATION LOGIC ---
+                    # Default to using the path (ReportLab loads original)
+                    image_source = img_path 
+                    
+                    if config.ENABLE_IMAGE_RESAMPLING and HAS_PIL:
+                        try:
+                            # 1. Calculate required pixels: (Size_in_Points / 72_points_per_inch) * DPI
+                            target_w_px = int((config.COL_WIDTH / 72.0) * config.RESAMPLING_DPI)
+                            target_h_px = int((img_h / 72.0) * config.RESAMPLING_DPI)
+                            
+                            with Image.open(img_path) as im:
+                                # 2. Check if source is significantly larger (e.g. > 20% larger)
+                                if im.width > target_w_px * 1.2 or im.height > target_h_px * 1.2:
+                                    
+                                    # Ensure RGB (removes alpha channel which can cause PDF issues, or CMYK)
+                                    if im.mode not in ('L', 'RGB'):
+                                        im = im.convert('RGB')
+                                    
+                                    # 3. Resize
+                                    # We use resize() to force it to match the box dimensions exactly.
+                                    # This effectively "bakes in" the stretch that ReportLab would do anyway.
+                                    im_resized = im.resize((target_w_px, target_h_px), Image.Resampling.LANCZOS)
+                                    
+                                    # Wrap in ImageReader for ReportLab
+                                    image_source = ImageReader(im_resized)
+                                    # print(f"Optimized {img_filename}: {im.size} -> {im_resized.size}")
+                        except Exception as opt_err:
+                            print(f"Image optimization skipped for {img_filename}: {opt_err}")
+
+                    self.c.drawImage(image_source, x, img_y_bottom, width=config.COL_WIDTH, height=img_h)
                     self.c.rect(x, img_y_bottom, config.COL_WIDTH, img_h)
                     image_drawn = True
                 except Exception as e:
@@ -98,7 +123,11 @@ class PDFGenerator:
             self.c.rect(x, y - img_h, config.COL_WIDTH, img_h)
 
         # 2. Draw Text Details
-        text_y = y - img_h - 10 
+        # Move text down to avoid overlapping image. 
+        # Dynamically calculate offset based on first line's font size + padding
+        first_line_size = config.PARTICIPANT_STYLE[0]['size']
+        text_gap = first_line_size + config.TEXT_GAP_BUFFER
+        text_y = y - img_h - text_gap
         
         for field in config.PARTICIPANT_STYLE:
             # The 'font' here now dynamically picks 'NotoBold' or 'NotoRegular' from config
@@ -138,12 +167,16 @@ class PDFGenerator:
                     ('BOTTOMPADDING', (0, 0), (-1, -1), config.TABLE_OPTS['padding']),
                     ('TOPPADDING', (0, 0), (-1, -1), config.TABLE_OPTS['padding']),
                 ]))
+                
+                # --- APPLY TABLE TOP MARGIN ---
+                # Move cursor down by the margin amount before drawing table
+                text_y -= config.TABLE_TOP_MARGIN 
+                
                 w, h = t.wrap(config.COL_WIDTH, config.PAGE_HEIGHT)
                 table_y_position = text_y - h
                 t.drawOn(self.c, x, table_y_position)
 
     def generate(self):
-        # ... (Copy from previous version)
         self.draw_header()
         rows = [self.participants[i:i + config.COLUMNS] for i in range(0, len(self.participants), config.COLUMNS)]
         for row in rows:
