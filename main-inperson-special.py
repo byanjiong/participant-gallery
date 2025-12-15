@@ -1,6 +1,6 @@
 import json
 import os
-from reportlab.lib.colors import gray, black, blue
+from reportlab.lib.colors import gray, black, blue, red
 from reportlab.lib.pagesizes import landscape, A4
 from generator import PDFGenerator
 
@@ -8,9 +8,9 @@ from generator import PDFGenerator
 # But you don't *need* to import it to override it.
 import config 
 
-INPUT_FILENAME = 'in-person-old-student-std.json'
-OUTPUT_FILENAME = "output_in-person-old-student-std.pdf"
-TOP_RIGHT_TEXT = "In-person & Old student"
+INPUT_FILENAME = 'in-person-kiv.json'
+OUTPUT_FILENAME = "output_in-person-special.pdf"
+TOP_RIGHT_TEXT = "In-person & Special Attention"
 
 def load_data():
     path = os.path.join('data', INPUT_FILENAME)
@@ -88,14 +88,14 @@ def main():
                 "color": gray,
                 "padding": 0
             },
-            # {
-            #     "key": "line2",          # Adding a 3rd line that might not be in the default config
-            #     "label": "",
-            #     "font": config.FONT_NAME_REGULAR,
-            #     "size": 10,
-            #     "color": blue,           # Using a custom color (requires import)
-            #     "padding": 0
-            # }
+            {
+                "key": "line2",          # Adding a 3rd line that might not be in the default config
+                "label": "Mental health: ",
+                "font": config.FONT_NAME_REGULAR,
+                "size": 13,
+                "color": red,           # Using a custom color (requires import)
+                "padding": 0
+            }
         ]
     }
 

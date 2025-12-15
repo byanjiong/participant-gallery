@@ -18,14 +18,14 @@ FONT_NAME_REGULAR = 'NotoRegular'
 FONT_NAME_BOLD = 'NotoBold'
 
 # Margins
-MARGIN_TOP = 36
-MARGIN_BOTTOM = 32
+MARGIN_TOP = 40
+MARGIN_BOTTOM = 40
 MARGIN_LEFT = 30
 MARGIN_RIGHT = 30
 
 # Grid Settings
 COLUMNS = 4
-IMG_ASPECT_RATIO = 3.5/4.5
+IMG_ASPECT_RATIO = 1
 IMG_BORDER_WIDTH = 1
 GRID_GAP_X = 26
 GRID_GAP_Y = 36
@@ -83,24 +83,8 @@ PARTICIPANT_STYLE = [
         "key": "line1",
         "label": "",        
         "font": FONT_NAME_REGULAR, # <--- USE REGULAR HERE
-        "size": 13,
+        "size": 11,
         "color": black,
         "padding": 0
-    },
-    # {
-    #     "key": "line2",
-    #     "label": "",
-    #     "font": FONT_NAME_REGULAR,
-    #     "size": 11,
-    #     "color": black,
-    #     "padding": 2
-    # },
-    # {
-    #     "key": "line3",
-    #     "label": "",
-    #     "font": FONT_NAME_REGULAR,
-    #     "size": 9,
-    #     "color": gray,
-    #     "padding": 4
-    # }
+    }
 ]

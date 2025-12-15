@@ -8,9 +8,9 @@ from generator import PDFGenerator
 # But you don't *need* to import it to override it.
 import config 
 
-INPUT_FILENAME = 'in-person-old-student-std.json'
-OUTPUT_FILENAME = "output_in-person-old-student-std.pdf"
-TOP_RIGHT_TEXT = "In-person & Old student"
+INPUT_FILENAME = 'in-person-new-student-std.json'
+OUTPUT_FILENAME = "output_in-person-new-student-std.pdf"
+TOP_RIGHT_TEXT = "In-person & New student"
 
 def load_data():
     path = os.path.join('data', INPUT_FILENAME)
@@ -75,8 +75,8 @@ def main():
             {
                 "key": "name",           # The JSON key in participants.json
                 "label": "",             # Prefix text (e.g. "Name: ")
-                "font": config.FONT_NAME_BOLD, # Use imported constant or string like "Helvetica-Bold"
-                "size": 14,              # Larger size
+                "font": config.FONT_NAME_REGULAR, # config.FONT_NAME_BOLD, # Use imported constant or string like "Helvetica-Bold"
+                "size": 12,              # Larger size
                 "color": black,
                 "padding": 0
             },

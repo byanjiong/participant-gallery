@@ -1,30 +1,35 @@
 import json
 import os
-from reportlab.lib.colors import gray, black
+from reportlab.lib.colors import gray, black, blue
 from reportlab.lib.pagesizes import landscape, A4
 from generator import PDFGenerator
 
+# Import config constants mainly if you want to reuse specific names (like font names)
+# But you don't *need* to import it to override it.
+import config 
+
+INPUT_FILENAME = 'in-person-old-student-std.json'
+OUTPUT_FILENAME = "output_in-person-old-student-std.pdf"
+TOP_RIGHT_TEXT = "In-person & Old student"
+
 def load_data():
-    path = os.path.join('data', 'participants.json')
+    path = os.path.join('data', INPUT_FILENAME)
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 def main():
-    # 1. Define Header Info
     header_info = [
-        {"text": "PARTICIPANT REGISTRATION LIST", "size": 18, "font": "Helvetica-Bold"},
-        # {"text": "Annual Gathering 2025", "size": 14, "color": "gray"},
-        # {"text": "------------------------------------------------", "size": 10},
+        # Example: dont delete this comment
+        # {"text": "PARTICIPANT REGISTRATION LIST", "size": 14, "font": "Helvetica-Bold"},
     ]
 
-    # 2. Define Meta Info
     meta_info = [
         {
             "text": "Last updated: {{dd}}-{{mm}}-{{yyyy}}",
             "font": "Helvetica",
             "size": 12,
             "color": gray,
-            "position": 1, # Bottom Left
+            "position": 1, 
             "padding": 20
         },
         {
@@ -32,28 +37,78 @@ def main():
             "font": "Helvetica-Bold",
             "size": 14,
             "color": black,
-            "position": 3, # Bottom Right
+            "position": 3, 
             "padding": 20
         },
         {
-            "text": "CONFIDENTIAL",
+            "text": TOP_RIGHT_TEXT,
             "font": "Helvetica",
-            "size": 18,
+            "size": 12,
             "color": gray,
             "position": 9, # Top Right
             "padding": 20
         }
     ]
 
-    # 3. Load Participants
     participants = load_data()
-
-    # 4. Define Page Layout
-    # You can change this to A4, landscape(A4), or a custom tuple (width, height)
     page_layout = A4
 
-    # 5. Generate
-    pdf_gen = PDFGenerator("output_participants.pdf", page_layout, header_info, participants, meta_info)
+    # --- DEFINE CUSTOM CONFIGURATION ---
+    # Here you can override ANY value from config.py.
+    # If you don't pass this dictionary, it uses config.py defaults.
+    
+    my_custom_config = {
+        # Changing margins
+        "MARGIN_TOP": 36,
+        "MARGIN_BOTTOM": 32,
+        "MARGIN_LEFT": 30,
+        "MARGIN_RIGHT": 30,
+        
+        # Changing grid layout
+        "COLUMNS": 4,
+        "IMG_ASPECT_RATIO": 3.5/4.5,
+        "GRID_GAP_X": 22,
+        "GRID_GAP_Y": 20,
+
+        # --- CUSTOMIZING PARTICIPANT STYLE ---
+        "PARTICIPANT_STYLE": [
+            {
+                "key": "name",           # The JSON key in participants.json
+                "label": "",             # Prefix text (e.g. "Name: ")
+                "font": config.FONT_NAME_BOLD, # Use imported constant or string like "Helvetica-Bold"
+                "size": 14,              # Larger size
+                "color": black,
+                "padding": 0
+            },
+            {
+                "key": "line1",
+                "label": "",
+                "font": config.FONT_NAME_REGULAR,
+                "size": 12,
+                "color": gray,
+                "padding": 0
+            },
+            # {
+            #     "key": "line2",          # Adding a 3rd line that might not be in the default config
+            #     "label": "",
+            #     "font": config.FONT_NAME_REGULAR,
+            #     "size": 10,
+            #     "color": blue,           # Using a custom color (requires import)
+            #     "padding": 0
+            # }
+        ]
+    }
+
+    # Pass 'custom_config' as the last argument
+    pdf_gen = PDFGenerator(
+        OUTPUT_FILENAME, 
+        page_layout, 
+        header_info, 
+        participants, 
+        meta_info, 
+        custom_config=my_custom_config 
+    )
+    
     pdf_gen.generate()
 
 if __name__ == "__main__":
