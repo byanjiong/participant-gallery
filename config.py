@@ -2,7 +2,10 @@ import os
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import black, gray
 
-# A4 Dimensions
+# --- PAGE DIMENSIONS ---
+# NOTE: These are INITIAL DEFAULTS only. 
+# They are overwritten by PDFGenerator.__init__() based on the layout passed in main.py.
+# We keep them here so the script doesn't crash on import.
 PAGE_WIDTH, PAGE_HEIGHT = A4
 
 # --- FONT CONFIGURATION ---
@@ -15,8 +18,8 @@ FONT_NAME_REGULAR = 'NotoRegular'
 FONT_NAME_BOLD = 'NotoBold'
 
 # Margins
-MARGIN_TOP = 30
-MARGIN_BOTTOM = 30
+MARGIN_TOP = 36
+MARGIN_BOTTOM = 32
 MARGIN_LEFT = 30
 MARGIN_RIGHT = 30
 
@@ -24,8 +27,8 @@ MARGIN_RIGHT = 30
 COLUMNS = 4
 IMG_ASPECT_RATIO = 3.5/4.5
 IMG_BORDER_WIDTH = 1
-GRID_GAP_X = 15
-GRID_GAP_Y = 15
+GRID_GAP_X = 26
+GRID_GAP_Y = 36
 
 # Gap buffer between image and first line (Name)
 # Formula: Gap = First_Line_Font_Size + TEXT_GAP_BUFFER
@@ -48,16 +51,18 @@ DEFAULT_HEADER_STYLE = {
     "bottom_padding": 10
 }
 
-# Calculated Widths
+# --- CALCULATED WIDTHS ---
+# These run on import using the defaults above.
+# However, PDFGenerator will RE-CALCULATE config.COL_WIDTH dynamically.
 available_width = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
 total_gaps_width = (COLUMNS - 1) * GRID_GAP_X
 COL_WIDTH = (available_width - total_gaps_width) / COLUMNS
 
 # --- TABLE CONFIGURATION ---
 TABLE_OPTS = {
-    "key_col_ratio": 0.4,
+    "key_col_ratio": 0.45,
     "font": FONT_NAME_REGULAR, # Table uses Regular
-    "size": 9,
+    "size": 11,
     "text_color": black,
     "border_color": black,
     "border_width": 1,
@@ -78,7 +83,7 @@ PARTICIPANT_STYLE = [
         "key": "line1",
         "label": "",        
         "font": FONT_NAME_REGULAR, # <--- USE REGULAR HERE
-        "size": 11,
+        "size": 13,
         "color": black,
         "padding": 0
     },

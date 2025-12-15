@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import black
 from reportlab.pdfbase import pdfmetrics
@@ -17,11 +18,24 @@ except ImportError:
     print("Warning: 'Pillow' library not found. Image optimization disabled. Install via: pip install Pillow")
 
 class PDFGenerator:
-    def __init__(self, filename, header_items, participants):
-        self.c = canvas.Canvas(filename, pagesize=config.A4)
+    def __init__(self, filename, pagesize, header_items, participants, meta_info=None):
+        # 1. Update Config with new Page Size
+        # This is crucial because utils.py and internal logic rely on config.COL_WIDTH.
+        # By updating the module-level config variable, utils.py will see the correct width.
+        config.PAGE_WIDTH, config.PAGE_HEIGHT = pagesize
+        
+        # 2. Recalculate Column Width
+        # We must re-run the logic from config.py to adapt to the new width
+        available_width = config.PAGE_WIDTH - config.MARGIN_LEFT - config.MARGIN_RIGHT
+        total_gaps_width = (config.COLUMNS - 1) * config.GRID_GAP_X
+        config.COL_WIDTH = (available_width - total_gaps_width) / config.COLUMNS
+
+        self.c = canvas.Canvas(filename, pagesize=pagesize)
         self.header_items = header_items
         self.participants = participants
+        self.meta_info = meta_info if meta_info else []
         self.cursor_y = config.PAGE_HEIGHT - config.MARGIN_TOP
+        self.page_number = 1
         
         # --- ROBUST FONT REGISTRATION ---
         self.register_fonts()
@@ -49,6 +63,74 @@ class PDFGenerator:
                         
                 except Exception as inner_e:
                     print(f"Critical font error: {inner_e}")
+
+    def resolve_meta_text(self, text, page_num):
+        """Replaces variables in meta text"""
+        now = datetime.now()
+        resolved = text.replace("{{dd}}", now.strftime("%d"))
+        resolved = resolved.replace("{{mm}}", now.strftime("%m"))
+        resolved = resolved.replace("{{yyyy}}", now.strftime("%Y"))
+        resolved = resolved.replace("{{page}}", str(page_num))
+        return resolved
+
+    def draw_meta_info(self):
+        """Draws meta info items on the current page"""
+        if not self.meta_info:
+            return
+
+        w, h = config.PAGE_WIDTH, config.PAGE_HEIGHT
+        
+        for item in self.meta_info:
+            # defaults
+            text_template = item.get('text', '')
+            font = item.get('font', 'Helvetica')
+            size = item.get('size', 10)
+            color = item.get('color', black)
+            pos = item.get('position', 1)
+            padding = item.get('padding', 10)
+
+            resolved_text = self.resolve_meta_text(text_template, self.page_number)
+            
+            self.c.setFont(font, size)
+            self.c.setFillColor(color)
+            
+            # Keypad Position Logic
+            # 7 8 9
+            # 4 5 6
+            # 1 2 3
+            
+            # X Coordinates
+            if pos in [1, 4, 7]: # Left
+                x = padding
+                align = 'left'
+            elif pos in [2, 5, 8]: # Center
+                x = w / 2
+                align = 'center'
+            elif pos in [3, 6, 9]: # Right
+                x = w - padding
+                align = 'right'
+            else:
+                x = padding
+                align = 'left'
+
+            # Y Coordinates
+            # Note: For Top (7,8,9), we subtract font size to ensure text is below the very top edge
+            if pos in [1, 2, 3]: # Bottom
+                y = padding
+            elif pos in [4, 5, 6]: # Middle
+                y = h / 2
+            elif pos in [7, 8, 9]: # Top
+                y = h - padding - size 
+            else:
+                y = padding
+
+            # Draw
+            if align == 'center':
+                self.c.drawCentredString(x, y, resolved_text)
+            elif align == 'right':
+                self.c.drawRightString(x, y, resolved_text)
+            else:
+                self.c.drawString(x, y, resolved_text)
 
     def apply_header_defaults(self, item):
         defaults = config.DEFAULT_HEADER_STYLE.copy()
@@ -101,13 +183,8 @@ class PDFGenerator:
                                         im = im.convert('RGB')
                                     
                                     # 3. Resize
-                                    # We use resize() to force it to match the box dimensions exactly.
-                                    # This effectively "bakes in" the stretch that ReportLab would do anyway.
                                     im_resized = im.resize((target_w_px, target_h_px), Image.Resampling.LANCZOS)
-                                    
-                                    # Wrap in ImageReader for ReportLab
                                     image_source = ImageReader(im_resized)
-                                    # print(f"Optimized {img_filename}: {im.size} -> {im_resized.size}")
                         except Exception as opt_err:
                             print(f"Image optimization skipped for {img_filename}: {opt_err}")
 
@@ -123,14 +200,11 @@ class PDFGenerator:
             self.c.rect(x, y - img_h, config.COL_WIDTH, img_h)
 
         # 2. Draw Text Details
-        # Move text down to avoid overlapping image. 
-        # Dynamically calculate offset based on first line's font size + padding
         first_line_size = config.PARTICIPANT_STYLE[0]['size']
         text_gap = first_line_size + config.TEXT_GAP_BUFFER
         text_y = y - img_h - text_gap
         
         for field in config.PARTICIPANT_STYLE:
-            # The 'font' here now dynamically picks 'NotoBold' or 'NotoRegular' from config
             self.c.setFont(field['font'], field['size'])
             self.c.setFillColor(field['color'])
             
@@ -168,8 +242,6 @@ class PDFGenerator:
                     ('TOPPADDING', (0, 0), (-1, -1), config.TABLE_OPTS['padding']),
                 ]))
                 
-                # --- APPLY TABLE TOP MARGIN ---
-                # Move cursor down by the margin amount before drawing table
                 text_y -= config.TABLE_TOP_MARGIN 
                 
                 w, h = t.wrap(config.COL_WIDTH, config.PAGE_HEIGHT)
@@ -179,16 +251,24 @@ class PDFGenerator:
     def generate(self):
         self.draw_header()
         rows = [self.participants[i:i + config.COLUMNS] for i in range(0, len(self.participants), config.COLUMNS)]
+        
         for row in rows:
             row_heights = [utils.calculate_card_height(p) for p in row]
             max_row_height = max(row_heights) if row_heights else 0
+            
             if (self.cursor_y - max_row_height) < config.MARGIN_BOTTOM:
+                self.draw_meta_info()
                 self.c.showPage()
+                self.page_number += 1
                 self.cursor_y = config.PAGE_HEIGHT - config.MARGIN_TOP
+            
             current_x = config.MARGIN_LEFT
             for i, participant in enumerate(row):
                 self.draw_participant_card(current_x, self.cursor_y, participant, max_row_height)
                 current_x += config.COL_WIDTH + config.GRID_GAP_X
+            
             self.cursor_y -= (max_row_height + config.GRID_GAP_Y)
+        
+        self.draw_meta_info()
         self.c.save()
         print(f"PDF Generated successfully.")

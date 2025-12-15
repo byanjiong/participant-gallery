@@ -5,14 +5,14 @@ from reportlab.lib.pagesizes import landscape, A4
 from generator import PDFGenerator
 
 def load_data():
-    path = os.path.join('data', 'participants.json')
+    path = os.path.join('data', 'in-person-old-student-std.json')
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 def main():
     # 1. Define Header Info
     header_info = [
-        {"text": "PARTICIPANT REGISTRATION LIST", "size": 18, "font": "Helvetica-Bold"},
+        # {"text": "PARTICIPANT REGISTRATION LIST", "size": 18, "font": "Helvetica-Bold"},
         # {"text": "Annual Gathering 2025", "size": 14, "color": "gray"},
         # {"text": "------------------------------------------------", "size": 10},
     ]
@@ -36,9 +36,9 @@ def main():
             "padding": 20
         },
         {
-            "text": "CONFIDENTIAL",
+            "text": "In-person & Old student",
             "font": "Helvetica",
-            "size": 18,
+            "size": 12,
             "color": gray,
             "position": 9, # Top Right
             "padding": 20
