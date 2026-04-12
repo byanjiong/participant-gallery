@@ -1,6 +1,3 @@
-Here is the complete, formatted `README.md` for your project in standard Markdown format, ready to be copied and saved into your repository:
-
-```markdown
 # Participant Gallery PDF Generator
 
 A flexible, Python-based tool designed to generate grid-based PDF photo galleries and participant directories. It takes JSON data and images as input and produces polished, print-ready PDFs using `reportlab` and `Pillow`.
@@ -143,4 +140,3 @@ my_custom_config = {
 
 ### Cover Pages
 Scripts like `main-inperson-AKP.py` utilize a `COVER_PAGE_INFO` dictionary to generate a front page. You can customize this dictionary to define the title, interview symbols, and reference tables for your specific group's PDF. If a font does not support a specific symbol (like emojis), you can safely replace them with standard text in this dictionary.
-```
