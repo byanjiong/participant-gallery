@@ -1,8 +1,9 @@
+# File: generator.py
 import os
 from datetime import datetime
 from types import SimpleNamespace
 from reportlab.pdfgen import canvas
-from reportlab.lib.colors import black
+from reportlab.lib.colors import black, gray  # Added gray for the cover page tables
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Table, TableStyle
@@ -18,7 +19,7 @@ except ImportError:
     print("Warning: 'Pillow' library not found. Image optimization disabled.")
 
 class PDFGenerator:
-    def __init__(self, filename, pagesize, header_items, participants, meta_info=None, custom_config=None):
+    def __init__(self, filename, pagesize, header_items, participants, meta_info=None, custom_config=None, cover_info=None):
         """
         Initializes the generator with an optional custom_config dictionary.
         If custom_config is provided, it overrides values from config.py.
@@ -51,6 +52,7 @@ class PDFGenerator:
         self.header_items = header_items
         self.participants = participants
         self.meta_info = meta_info if meta_info else []
+        self.cover_info = cover_info  # Store the cover page configuration
         self.cursor_y = self.cfg.PAGE_HEIGHT - self.cfg.MARGIN_TOP
         self.page_number = 1
         
@@ -252,7 +254,66 @@ class PDFGenerator:
                 table_y_position = table_start_y - h
                 t.drawOn(self.c, x, table_y_position)
 
+    def draw_cover_page(self):
+        """Draws a dedicated front page with group title and guideline tables."""
+        if not self.cover_info:
+            return
+
+        w, h = self.cfg.PAGE_WIDTH, self.cfg.PAGE_HEIGHT
+        margin_left = self.cfg.MARGIN_LEFT
+        y_cursor = h - self.cfg.MARGIN_TOP - 40
+
+        # Draw Group Title
+        self.c.setFont(self.cfg.FONT_NAME_BOLD, 24)
+        self.c.drawCentredString(w / 2.0, y_cursor, self.cover_info.get("title", ""))
+        y_cursor -= 50
+
+        # Helper to draw clean guideline tables
+        def draw_guide_table(title, data, y_pos, col_widths):
+            if not data or len(data) <= 1: 
+                return y_pos
+                
+            self.c.setFont(self.cfg.FONT_NAME_BOLD, 12)
+            self.c.drawString(margin_left, y_pos, title)
+            y_pos -= 15
+            
+            t = Table(data, colWidths=col_widths)
+            t.setStyle(TableStyle([
+                ('FONT', (0, 0), (-1, -1), self.cfg.FONT_NAME_REGULAR, 10),
+                ('FONT', (0, 0), (-1, 0), self.cfg.FONT_NAME_BOLD, 10), # Bold Header Row
+                ('TEXTCOLOR', (0, 0), (-1, -1), black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, gray),
+                ('BACKGROUND', (0, 0), (-1, 0), '#f0f0f0'), # Light Gray Header
+                ('PADDING', (0, 0), (-1, -1), 6),
+            ]))
+            tw, th = t.wrap(w, h)
+            t.drawOn(self.c, margin_left, y_pos - th)
+            return y_pos - th - 30 # Return new Y position after table (adding 30pt gap)
+
+        # Format table data (Add Headers)
+        symbols_data = [["Symbol", "Meaning"]] + self.cover_info.get("interview_symbols", [])
+        ajahn_data = [["Ajahn Name", "Shortcode"]] + self.cover_info.get("ajahn_codes", [])
+        new_st_data = [["Column", "Meaning"]] + self.cover_info.get("new_student_guide", [])
+        old_st_data = [["Column", "Meaning"]] + self.cover_info.get("old_student_guide", [])
+
+        # Draw Tables Sequentially
+        y_cursor = draw_guide_table("Interview Symbols", symbols_data, y_cursor, [60, 400])
+        y_cursor = draw_guide_table("Ajahn Shortcodes", ajahn_data, y_cursor, [250, 100])
+        y_cursor = draw_guide_table("Guide to Report Columns (New Student)", new_st_data, y_cursor, [80, 400])
+        y_cursor = draw_guide_table("Guide to Report Columns (Old Student)", old_st_data, y_cursor, [80, 400])
+
+        # Page Break
+        self.c.showPage()
+        
+        # Reset cursor for the main gallery grid so it starts at the top of the next page
+        self.cursor_y = self.cfg.PAGE_HEIGHT - self.cfg.MARGIN_TOP
+
     def generate(self):
+        # Draw the cover page first if the info is provided
+        if hasattr(self, 'cover_info') and self.cover_info:
+            self.draw_cover_page()
+
         self.draw_header()
         rows = [self.participants[i:i + self.cfg.COLUMNS] for i in range(0, len(self.participants), self.cfg.COLUMNS)]
         
